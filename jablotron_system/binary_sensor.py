@@ -391,11 +391,21 @@ class DeviceScanner():
                     byte6 = packetpart[5:6]  # 6th byte, second part of device ID
 
                     """Only process specific state changes"""
-                    if byte3 in (b'\x00', b'\x01'):
-#                        if byte4 in (b'\x6d', b'\x75', b'\x79', b'\x7d', b'\x88', b'\x80'):
-                        # 6d, 75, 79, 7d, 88 and 80 are statusses for wireless sensors
-                        # 8c and 84 are ON statusses for wired sensors
-                        if byte4 in (b'\x6d', b'\x75', b'\x79', b'\x7d', b'\x80', b'\x84', b'\x88', b'\x8c'):
+                    if byte3 in (b'\x00', b'\x01', b'\x80'):
+						# Added 80 för upstairs
+                        if byte4 in (b'\x6e', b'\x88', b'\x80', b'\x78', b'\x74', b'\x7c', b'\x70', b'\x84', b'\x8c'):
+                        # Old 6d, 75, 79, 7d, 88 and 80 are statusses for wireless sensors
+                        # Old 8c and 84 are ON statusses for wired sensors
+						# 6e Groventre (6c)
+						# 88 vardagsrummet (8a)
+						# 80 Huvudentre 
+						# 78 Kontoret (7a)
+						# 74 Hallen (76)
+						# 7c Lillhallen (7e)
+						# 70 Förrådet (72)
+						# 84 okänd (86)
+						# 8c okänd (8e) 
+#                        if byte4 in (b'\x6d', b'\x75', b'\x79', b'\x7d', b'\x80', b'\x84', b'\x88', b'\x8c'):
                             _device_state = STATE_ON
                         else:
                             _device_state = STATE_OFF
@@ -406,7 +416,6 @@ class DeviceScanner():
 
                         dev_id = 'jablotron_' + str(i)
                         entity_id = 'binary_sensor.' + dev_id
-
                         """ Create or update sensor """
                         self._hass.add_job(
                             self.async_see(dev_id, _device_state)
@@ -455,8 +464,8 @@ class DeviceScanner():
         """ Send trigger for sensor update to system"""
 
 #        _LOGGER.debug('PortScanner._triggersensorupdate(): Send activation packet: %s', self._activation_packet)
-        _LOGGER.debug('PortScanner._triggersensorupdate(): Send activation packet: <blurred>')
-        _LOGGER.debug('PortScanner._triggersensorupdate(): Send packet: 52 02 13 05 9a')
+#        _LOGGER.debug('PortScanner._triggersensorupdate(): Send activation packet: <blurred>')
+#        _LOGGER.debug('PortScanner._triggersensorupdate(): Send packet: 52 02 13 05 9a')
 
         self._sendPacket(self._activation_packet)
         self._sendPacket(b'\x52\x02\x13\x05\x9a')
@@ -464,7 +473,7 @@ class DeviceScanner():
     def _keepalive(self):
         """ Send keepalive to system"""
 
-        _LOGGER.debug('PortScanner._triggersensorupdate(): Send packet 52 01 02')
+#        _LOGGER.debug('PortScanner._triggersensorupdate(): Send packet 52 01 02')
         self._sendPacket(b'\x52\x01\x02')
 
 
