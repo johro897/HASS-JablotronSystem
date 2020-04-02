@@ -393,19 +393,17 @@ class DeviceScanner():
                     """Only process specific state changes"""
                     if byte3 in (b'\x00', b'\x01', b'\x80'):
 						# Added 80 för upstairs
-                        if byte4 in (b'\x6e', b'\x88', b'\x80', b'\x78', b'\x74', b'\x7c', b'\x70', b'\x84', b'\x8c'):
-                        # Old 6d, 75, 79, 7d, 88 and 80 are statusses for wireless sensors
-                        # Old 8c and 84 are ON statusses for wired sensors
+                        if byte4 in (b'\x6c', b'\x70', b'\x74', b'\x78', b'\x7c', b'\x80', b'\x84', b'\x88', b'\x8c'):
 						# 6c Groventre Dörr (6e)
-						# 88 vardagsrummet (8a)
-						# 80 Huvudentre Dörr (82)
+                        # 70 Förrådet (72)
+                        # 74 Huvudentre (76)
 						# 78 Kontoret (7a)
-						# 74 Huvudentre (76)
-						# 7c Lillhallen (7e)
-						# 70 Förrådet (72)
-						# 84 Sovrum (86)
+                        # 7c Lillhallen (7e)
+                        # 80 Huvudentre Dörr (82)
+                        # 84 Sovrum (86)
+                        # 88 vardagsrummet (8a)
 						# 8c Hallen ovan (8e) 
-#                        if byte4 in (b'\x6d', b'\x75', b'\x79', b'\x7d', b'\x80', b'\x84', b'\x88', b'\x8c'):
+						
                             _device_state = STATE_ON
                         else:
                             _device_state = STATE_OFF
