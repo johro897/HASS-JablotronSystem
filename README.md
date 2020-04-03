@@ -1,7 +1,7 @@
 # HASS-JablotronSystem
-Jablotron component for Home Assistant
-
-
+Jablotron component for Home Assistant adapted from:
+Binary sensor code, https://github.com/plaksnor/HASS-JablotronSystem, maintained by @plaksnor
+Alarm Control Panel, https://github.com/Horsi70/HASS-JablotronSystem, maintained by @Horsi70
 
 Home Assistant component to arm and disarm the alarm system and read sensor states.
 
@@ -37,7 +37,7 @@ $ dmesg | grep hid
 ## How it works
 - Available platforms (alarm control panel and binary sensors) will be shown on the http(s)://domainname<:8123>/states page.
 - The alarm control panel is always available.
-- Sensors will automatically be added as soon as they are triggered.
+- Sensors needs to be scanned for and added into the binary sensor in case they are not already available
 - Discovered (triggered) sensors will be stored in config/jablotron_devices.yaml and get loaded after restart of HA.
 - In the 'Settings' -> 'Customization' section of HA you'll be able to customize each sensor:
   - friendly_name : give it a human readable name
@@ -109,8 +109,8 @@ binary_sensor:
 ```
 
 ## Tested with
-- Home Assistant 0.94.0b3, 0.97.0, installed in docker at RPi 3 model B+ and RPi 4
-- Jablotron JA-101K-LAN, firmware: LJ60422, hardware: LJ16123
+- Home Assistant 0.107 installed on RPi 3 model B+ with Hassio
+- Jablotron JA-106K-LAN, firmware: LJ60422, hardware: LJ16123
 - Jablotron magnetic and PIR (motion) sensors
 
 ## Demo
@@ -146,11 +146,6 @@ Opened up 2 browsers. Up = local host, down = remote host based on MQTT:
 - Get device info, such as battery state and last seen.
 - Support for other devices such as smoke detectors, sirenes and (physical) control panel
 - Support other platforms to show arm/disarm history and photo gallery, probably only available on JABLOTRON Web Self-service (jablonet.net)
-- [DONE!] Retain discovered sensors in a configuration file and read this file as soon as HA starts.
-- [DONE!] Added MQTT support
 
-## Credits
-Big thanks to [mattsaxon](https://community.home-assistant.io/u/mattsaxon) and [Marcel1](https://community.home-assistant.io/u/marcel1)!
 
-Work in progress. Any help would be great!
 
