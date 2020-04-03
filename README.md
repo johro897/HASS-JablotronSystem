@@ -1,7 +1,7 @@
 # HASS-JablotronSystem
 Jablotron component for Home Assistant adapted from:
-Binary sensor code, https://github.com/plaksnor/HASS-JablotronSystem, maintained by @plaksnor
-Alarm Control Panel, https://github.com/Horsi70/HASS-JablotronSystem, maintained by @Horsi70
+- Binary Sensor, https://github.com/plaksnor/HASS-JablotronSystem, maintained by @plaksnor
+- Alarm Control Panel, https://github.com/Horsi70/HASS-JablotronSystem, maintained by @Horsi70
 
 Home Assistant component to arm and disarm the alarm system and read sensor states.
 
@@ -37,11 +37,18 @@ $ dmesg | grep hid
 ## How it works
 - Available platforms (alarm control panel and binary sensors) will be shown on the http(s)://domainname<:8123>/states page.
 - The alarm control panel is always available.
-- Sensors needs to be scanned for and added into the binary sensor in case they are not already available
+- Sensors needs to be scanned for and added into the binary sensor in case they are not found from start
 - Discovered (triggered) sensors will be stored in config/jablotron_devices.yaml and get loaded after restart of HA.
 - In the 'Settings' -> 'Customization' section of HA you'll be able to customize each sensor:
   - friendly_name : give it a human readable name
   - device_class  : give it a class which matches the device
+
+## Find necessary sensor data
+- All sensors will send 2 packets of data when triggered
+- First packet is of interest and needs to be analysed in order to be added to binary sensor code
+- A sensor will send both on and off info
+- On seems to be a hex value that is 2 lower then off value
+- On value should be added, if not already existing, to the binary sensor code
 
 ## Enable MQTT support
 **Alarm_control_panel**
