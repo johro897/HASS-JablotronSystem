@@ -5,6 +5,7 @@ import time
 import asyncio
 import threading
 
+
 from . import DOMAIN
 
 import homeassistant.components.alarm_control_panel as alarm
@@ -48,10 +49,12 @@ class JablotronAlarm(alarm.AlarmControlPanel):
         self._lock = threading.BoundedSemaphore()
         self._stop = threading.Event()
         self._data_flowing = threading.Event()
-    
+        
         """Setup the MQTT component, if the mqtt.publish service is available."""
-        self._mqtt_enabled = hass.services.has_service('mqtt', 'publish')
-        _LOGGER.debug("(__init__) MQTT enabled? %s", self._mqtt_enabled)
+        """Since MQTT is run on separate instance I will connect directly"""
+      #  self._mqtt_enabled = hass.services.has_service('mqtt', 'publish')
+        self._mqtt_enabled = True
+        _LOGGER.info("(__init__) MQTT enabled? %s", self._mqtt_enabled)
         
         if self._mqtt_enabled:
           self._mqtt = hass.components.mqtt
@@ -77,9 +80,9 @@ class JablotronAlarm(alarm.AlarmControlPanel):
     def _mqtt_init(self):
         """Subscribe to MQTT topic"""
 
-        _LOGGER.debug('(mqtt_init) subscribing to topic: %s', self._command_topic)
+        _LOGGER.info('(mqtt_init) subscribing to topic: %s', self._command_topic)
         self._mqtt.subscribe(self._command_topic, self.message_received)
-        _LOGGER.debug('(mqtt_init) successfully subscribed to topic: %s', self._command_topic)
+        _LOGGER.info('(mqtt_init) successfully subscribed to topic: %s', self._command_topic)
 
 
     def message_received(self, msg):
@@ -87,7 +90,7 @@ class JablotronAlarm(alarm.AlarmControlPanel):
         """ If a MQTT message has been received, call service to arm or disarm alarm, without or with code if required. """
 
         _alarm_state = msg.payload.lower()
-        _LOGGER.debug("(message_received) calling service: alarm_control_panel.alarm_%s", _alarm_state)
+        _LOGGER.info("(message_received) calling service: alarm_control_panel.alarm_%s", _alarm_state)
 
         """ Todo: change 'jablotron_alarm' to proper entity_id based on self._name """
         if (_alarm_state[0:3] == 'arm' and self._code_arm_required) or (_alarm_state[0:6] == 'disarm' and self._code_disarm_required):

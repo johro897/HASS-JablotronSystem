@@ -98,7 +98,7 @@ class JablotronSensor(BinarySensorDevice):
         self._name = 'Jablotron sensor'
         self._state = STATE_OFF
         self.dev_id = dev_id
-        _LOGGER.debug('JablotronSensor.__init__(): dev_id created: %s', self.dev_id)
+        _LOGGER.info('JablotronSensor.__init__(): dev_id created: %s', self.dev_id)
 
     @property
     def name(self):
@@ -166,7 +166,7 @@ class DeviceScanner():
         self._old_bin_string = '0'.zfill(32)
         self._new_bin_string = '0'.zfill(32)
 
-        _LOGGER.debug('DeviceScanner.__init__(): serial port: %s', format(self._file_path))
+        _LOGGER.info('DeviceScanner.__init__(): serial port: %s', format(self._file_path))
 
         switcher = {
             "0": b'\x30',
@@ -393,19 +393,17 @@ class DeviceScanner():
                     """Only process specific state changes"""
                     if byte3 in (b'\x00', b'\x01', b'\x80'):
 						# Added 80 för upstairs
-                        if byte4 in (b'\x6e', b'\x88', b'\x80', b'\x78', b'\x74', b'\x7c', b'\x70', b'\x84', b'\x8c'):
-                        # Old 6d, 75, 79, 7d, 88 and 80 are statusses for wireless sensors
-                        # Old 8c and 84 are ON statusses for wired sensors
-						# 6e Groventre (6c)
-						# 88 vardagsrummet (8a)
-						# 80 Huvudentre 
+                        if byte4 in (b'\x6c', b'\x70', b'\x74', b'\x78', b'\x7c', b'\x80', b'\x84', b'\x88', b'\x8c'):
+						# 6c Groventre Dörr (6e)
+                        # 70 Förrådet (72)
+                        # 74 Huvudentre (76)
 						# 78 Kontoret (7a)
-						# 74 Hallen (76)
-						# 7c Lillhallen (7e)
-						# 70 Förrådet (72)
-						# 84 okänd (86)
-						# 8c okänd (8e) 
-#                        if byte4 in (b'\x6d', b'\x75', b'\x79', b'\x7d', b'\x80', b'\x84', b'\x88', b'\x8c'):
+                        # 7c Lillhallen (7e)
+                        # 80 Huvudentre Dörr (82)
+                        # 84 Sovrum (86)
+                        # 88 vardagsrummet (8a)
+						# 8c Hallen ovan (8e) 
+						
                             _device_state = STATE_ON
                         else:
                             _device_state = STATE_OFF
@@ -437,7 +435,7 @@ class DeviceScanner():
                         _LOGGER.debug("Probably some keep alive packet from a sensor which hasn't been triggered recently")
 
                     else:
-                        _LOGGER.debug("New unknown %s packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
+                        _LOGGER.info("New unknown %s packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
 
                 else:
                     pass
