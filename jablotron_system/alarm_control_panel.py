@@ -5,6 +5,7 @@ import time
 import asyncio
 import threading
 
+
 from . import DOMAIN
 
 import homeassistant.components.alarm_control_panel as alarm
@@ -48,9 +49,11 @@ class JablotronAlarm(alarm.AlarmControlPanel):
         self._lock = threading.BoundedSemaphore()
         self._stop = threading.Event()
         self._data_flowing = threading.Event()
-    
+        
         """Setup the MQTT component, if the mqtt.publish service is available."""
-        self._mqtt_enabled = hass.services.has_service('mqtt', 'publish')
+        """Since MQTT is run on separate instance I will connect directly"""
+      #  self._mqtt_enabled = hass.services.has_service('mqtt', 'publish')
+        self._mqtt_enabled = True
         _LOGGER.info("(__init__) MQTT enabled? %s", self._mqtt_enabled)
         
         if self._mqtt_enabled:
