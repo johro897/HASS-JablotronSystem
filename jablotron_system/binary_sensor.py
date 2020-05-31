@@ -62,7 +62,7 @@ from concurrent.futures import ThreadPoolExecutor
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.binary_sensor import (
     PLATFORM_SCHEMA,
-    BinarySensorDevice,
+    BinarySensorEntity,
 )
 from homeassistant.const import (
     STATE_ON,
@@ -90,7 +90,7 @@ async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, asyn
     data = DeviceScanner(hass, config, async_add_entities, devices)
 
 
-class JablotronSensor(BinarySensorDevice):
+class JablotronSensor(BinarySensorEntity):
     """Representation of a Sensor."""
 
     def __init__(self, hass: HomeAssistantType, dev_id: str):
@@ -99,6 +99,17 @@ class JablotronSensor(BinarySensorDevice):
         self._state = STATE_OFF
         self.dev_id = dev_id
         _LOGGER.info('JablotronSensor.__init__(): dev_id created: %s', self.dev_id)
+
+    @property
+    def is_on(self):
+        if self._state == STATE_OFF:
+            return False
+        elif self._state == STATE_ON:
+            return True
+
+    @property
+    def unique_id(self):
+        return self.dev_id
 
     @property
     def name(self):
@@ -111,10 +122,9 @@ class JablotronSensor(BinarySensorDevice):
         """Return the state of the sensor."""
         return self._state
 
-    async def _update(self):
-        """Update state to HA"""
-        self.async_schedule_update_ha_state()
-        _LOGGER.debug('JablotronSensor._update(): sensor updated')
+    @property
+    def device_class(self):
+        return 'motion'
 
     async def async_seen(self, state: str = None):
         """Mark the device as seen."""
@@ -239,7 +249,7 @@ class DeviceScanner():
             if not self._data_flowing.wait(0.5):
                 self._triggersensorupdate()
             else:
-                time.sleep(15)
+                time.sleep(10)
 
     def _read_loop(self):
         """Read incoming data"""
@@ -385,11 +395,12 @@ class DeviceScanner():
 
                     packetpart = packet[0:10]
 
-                    byte3 = packetpart[2:3]  # 3rd byte, state of device
-                    byte4 = packetpart[3:4]  # 4th byte, unknown
+                    byte3 = packetpart[2:3]  # 3rd byte, ??
+                    byte4 = packetpart[3:4]  # 4th byte, state of device
                     byte5 = packetpart[4:5]  # 5th byte, first part of device ID
                     byte6 = packetpart[5:6]  # 6th byte, second part of device ID
-
+                    _LOGGER.debug('Sensor ID: %s%s', str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8') )
+                    _LOGGER.debug('State: %s', str(binascii.hexlify(byte4), 'utf-8') )
                     """Only process specific state changes"""
                     if byte3 in (b'\x00', b'\x01', b'\x80'):
 						# Added 80 för upstairs
@@ -467,6 +478,12 @@ class DeviceScanner():
 
         self._sendPacket(self._activation_packet)
         self._sendPacket(b'\x52\x02\x13\x05\x9a')
+
+        # Sending OFF signal
+        for dev_id, device in self.devices.items():
+            self._hass.add_job(
+                self.async_see(dev_id, STATE_OFF)
+            )
 
     def _keepalive(self):
         """ Send keepalive to system"""
