@@ -62,7 +62,7 @@ from concurrent.futures import ThreadPoolExecutor
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.binary_sensor import (
     PLATFORM_SCHEMA,
-    BinarySensorDevice,
+    BinarySensorEntity,
 )
 from homeassistant.const import (
     STATE_ON,
@@ -90,7 +90,7 @@ async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, asyn
     data = DeviceScanner(hass, config, async_add_entities, devices)
 
 
-class JablotronSensor(BinarySensorDevice):
+class JablotronSensor(BinarySensorEntity):
     """Representation of a Sensor."""
 
     def __init__(self, hass: HomeAssistantType, dev_id: str):
@@ -99,6 +99,17 @@ class JablotronSensor(BinarySensorDevice):
         self._state = STATE_OFF
         self.dev_id = dev_id
         _LOGGER.info('JablotronSensor.__init__(): dev_id created: %s', self.dev_id)
+
+    @property
+    def is_on(self):
+        if self._state == STATE_OFF:
+            return False
+        elif self._state == STATE_ON:
+            return True
+
+    @property
+    def unique_id(self):
+        return self.dev_id
 
     @property
     def name(self):
@@ -111,10 +122,9 @@ class JablotronSensor(BinarySensorDevice):
         """Return the state of the sensor."""
         return self._state
 
-    async def _update(self):
-        """Update state to HA"""
-        self.async_schedule_update_ha_state()
-        _LOGGER.debug('JablotronSensor._update(): sensor updated')
+    @property
+    def device_class(self):
+        return 'motion'
 
     async def async_seen(self, state: str = None):
         """Mark the device as seen."""
@@ -122,21 +132,6 @@ class JablotronSensor(BinarySensorDevice):
             self._state = state
 
             _LOGGER.debug('JablotronSensor.async_seen(): state updated to %s', state)
-#            await self._update()
-#            await self.async_update()
-
-#    async def async_update(self):
-#        """Update state of entity.
-#        This method is a coroutine.
-#        """
-##        self._state = STATE_OFF
-#        _LOGGER.info('async_update: updated')
-
-
-
-
-
-
 
 
 
@@ -195,8 +190,7 @@ class DeviceScanner():
             self._read_loop_future = self._io_pool_exc.submit(self._read_loop)
             self._watcher_loop_keepalive_future = self._io_pool_exc.submit(self._watcher_loop_keepalive)
             self._watcher_loop_triggersensorupdate_future = self._io_pool_exc.submit(self._watcher_loop_triggersensorupdate)
-#            self._io_pool_exc.submit(self._keepalive)
-#            self._io_pool_exc.submit(self._triggersensorupdate)
+
 
         except Exception as ex:
             _LOGGER.error('Unexpected error 1: %s', format(ex) )
@@ -222,8 +216,6 @@ class DeviceScanner():
         return self._available
 
 
-#    async def _update(self):
-#            self.async_schedule_update_ha_state()
 
     def _watcher_loop_keepalive(self):
         """Trigger keepalive message to get d8 08 packets."""
@@ -239,7 +231,7 @@ class DeviceScanner():
             if not self._data_flowing.wait(0.5):
                 self._triggersensorupdate()
             else:
-                time.sleep(15)
+                time.sleep(10)
 
     def _read_loop(self):
         """Read incoming data"""
@@ -297,11 +289,8 @@ class DeviceScanner():
         )
 
         self._async_add_entities([device])
-        _LOGGER.debug('DeviceScanner.async_see(): added entity %s', device)
+        _LOGGER.info('DeviceScanner.async_see(): added entity %s', device)
         
-#        _LOGGER.info("async_see: nu gaan we async_update_ha_state aanroepen")
-#        if device.track:
-#        await device.async_update_ha_state()
 
 
     async def async_update_config(self, path, dev_id, device):
@@ -361,8 +350,6 @@ class DeviceScanner():
                             """Only create or update a sensor when this packet is the first d8 08 packet received since startup,
                                or if d8 08 packet reports about 1 specific device (by containing a 55 packet) or,
                                or if a specific device is not active anymore (y == '0')"""
-#                            if self._available == False or (y == '1' and packet[10:12] == b'\x55\x09') or y == '0':
-#                            if self._mode == 'd8' or (self._mode == '55' and (self._available == False or (y == '1' and packet[10:12] == b'\x55\x09') or y == '0')):
                             if self._mode == 'd8' or (self._mode == '55' and (self._available == False or (y == '1' and packet[10:11] == b'\x55') or y == '0')):
 
                                 """ Create or update sensor """
@@ -385,24 +372,26 @@ class DeviceScanner():
 
                     packetpart = packet[0:10]
 
-                    byte3 = packetpart[2:3]  # 3rd byte, state of device
-                    byte4 = packetpart[3:4]  # 4th byte, unknown
+                    byte3 = packetpart[2:3]  # 3rd byte, ??
+                    byte4 = packetpart[3:4]  # 4th byte, state of device
                     byte5 = packetpart[4:5]  # 5th byte, first part of device ID
                     byte6 = packetpart[5:6]  # 6th byte, second part of device ID
-
+                    _LOGGER.info('Sensor ID: %s%s : State: %s', str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8') )
+#                    _LOGGER.info('State: %s', str(binascii.hexlify(byte4), 'utf-8') )
+                    
                     """Only process specific state changes"""
                     if byte3 in (b'\x00', b'\x01', b'\x80'):
 						# Added 80 för upstairs
                         if byte4 in (b'\x6c', b'\x70', b'\x74', b'\x78', b'\x7c', b'\x80', b'\x84', b'\x88', b'\x8c'):
-						# 6c Groventre Dörr (6e)
-                        # 70 Förrådet (72)
-                        # 74 Huvudentre (76)
-						# 78 Kontoret (7a)
-                        # 7c Lillhallen (7e)
-                        # 80 Huvudentre Dörr (82)
-                        # 84 Sovrum (86)
-                        # 88 vardagsrummet (8a)
-						# 8c Hallen ovan (8e) 
+						# 6c Groventre Dörr     (6e) 4000
+                        # 70 Förrådet           (72) 8000
+                        # 74 Huvudentre         (76) C000
+						# 78 Kontoret           (7a) 0001
+                        # 7c Lillhallen         (7e) 4001
+                        # 80 Huvudentre Dörr    (82) 8001
+                        # 84 Sovrum             (86) C001
+                        # 88 vardagsrummet      (8a) 0002
+						# 8c Hallen ovan        (8e) 4002
 						
                             _device_state = STATE_ON
                         else:
@@ -461,21 +450,19 @@ class DeviceScanner():
     def _triggersensorupdate(self):
         """ Send trigger for sensor update to system"""
 
-#        _LOGGER.debug('PortScanner._triggersensorupdate(): Send activation packet: %s', self._activation_packet)
-#        _LOGGER.debug('PortScanner._triggersensorupdate(): Send activation packet: <blurred>')
-#        _LOGGER.debug('PortScanner._triggersensorupdate(): Send packet: 52 02 13 05 9a')
 
         self._sendPacket(self._activation_packet)
         self._sendPacket(b'\x52\x02\x13\x05\x9a')
 
+        # Sending OFF signal
+        for dev_id, device in self.devices.items():
+            self._hass.add_job(
+                self.async_see(dev_id, STATE_OFF)
+            )
+
     def _keepalive(self):
         """ Send keepalive to system"""
-
-#        _LOGGER.debug('PortScanner._triggersensorupdate(): Send packet 52 01 02')
         self._sendPacket(b'\x52\x01\x02')
-
-
-
 
 
 
