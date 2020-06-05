@@ -188,8 +188,8 @@ class JablotronAlarm(alarm.AlarmControlPanel):
                     if self._mqtt_enabled:
                         # "arming" is not recognized as an MQTT alarm state, so we'll use "pending" instead.
                         # https://www.home-assistant.io/components/alarm_control_panel.mqtt
-                        if new_state == "arming":
-                            new_state = "pending"
+                        # if new_state == "arming":
+                            # new_state = "pending"
 
                         # Send MQTT message with new state
                         _LOGGER.info("Sending MQTT message with state '%s' to remote alarm_control_panel", new_state)
