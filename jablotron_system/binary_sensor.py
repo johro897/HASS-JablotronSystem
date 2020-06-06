@@ -375,7 +375,7 @@ class DeviceScanner():
                     byte3 = packetpart[2:3]  # 3rd byte, ??
                     byte4 = packetpart[3:4]  # 4th byte, state of device
                     byte5 = packetpart[4:5]  # 5th byte, first part of device ID
-                    byte6 = packetpart[5:6]  # 6th byte, second part of device ID
+                    byte6 = packetpart[5:6]  # 6th byte, second part of device ID                    
                     _LOGGER.info('Sensor ID: %s%s : State: %s', str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8') )
 #                    _LOGGER.info('State: %s', str(binascii.hexlify(byte4), 'utf-8') )
                     
@@ -399,8 +399,9 @@ class DeviceScanner():
 
                         """Decode sensor ID from 5th and 6th byte"""
                         dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
+                        _LOGGER.info('dec value: %s', str(dec))
                         i = int(dec/64)
-
+                        _LOGGER.info('Decode sensor: %s', str(i))
                         dev_id = 'jablotron_' + str(i)
                         entity_id = 'binary_sensor.' + dev_id
                         """ Create or update sensor """
@@ -408,23 +409,48 @@ class DeviceScanner():
                             self.async_see(dev_id, _device_state)
                         )
 
-                    elif byte3 == b'\x0c':
-                        # we don't know yet. Must be some keep alive packet from a sensor who hasn't been triggered in a loooong time
-                        _LOGGER.debug("Unrecognized %s 0c packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
-                        _LOGGER.debug("Probably Control Panel OFF?")
-
-                    elif byte3 == b'\x2e':
-                        # we don't know yet. Must be some keep alive packet from a sensor who hasn't been triggered in a loooong time
-                        _LOGGER.debug("Unrecognized %s 2e packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
-                        _LOGGER.debug("Probably Control Panel ON?")
-
-                    elif byte3 == b'\x4f':
-                        # we don't know yet. Must be some keep alive packet from a sensor who hasn't been triggered in a loooong time
-                        _LOGGER.debug("Unrecognized %s 4f packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
-                        _LOGGER.debug("Probably some keep alive packet from a sensor which hasn't been triggered recently")
-
+                    # Added based on panel and app states, needs to be evalutaed and thought of
+                    elif byte5 == b'\x82' and byte6 == b'\x3e':
+                        _LOGGER.info("App")
+                        dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
+                        _LOGGER.info('dec value: %s', str(dec))
+                        i = int(dec/64)
+                        _LOGGER.info('Decode sensor: %s', str(i))
+                        dev_id = 'jablotron_' + str(i)
+                        if byte4 in(b'\x6c', b'\x6d'):
+                            _LOGGER.info("Johan")
+                        elif byte4 in(b'\x70', b'\x71'):
+                            _LOGGER.info("Sandra")
+                        else:
+                            _LOGGER.info("Unknown user: %s", str(binascii.hexlify(byte4), 'utf-8'))
+                    elif byte5 == b'\x42' and byte6 == b'\x04':
+                        _LOGGER.info("Panel Uppe")
+                        dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
+                        _LOGGER.info('dec value: %s', str(dec))
+                        i = int(dec/64)
+                        _LOGGER.info('Decode sensor: %s', str(i))                        
+                        if byte4 in(b'\x6c', b'\x6d'):
+                            _LOGGER.info("Johan")
+                        elif byte4 in(b'\x70', b'\x71'):
+                            _LOGGER.info("Sandra")
+                        else:
+                            _LOGGER.info("Unknown user: %s", str(binascii.hexlify(byte4), 'utf-8'))
+                    elif byte5 == b'\x82' and byte6 == b'\x04':
+                        _LOGGER.info("Panel Nere")
+                        dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
+                        _LOGGER.info('dec value: %s', str(dec))
+                        i = int(dec/64)
+                        _LOGGER.info('Decode sensor: %s', str(i))                        
+                        if byte4 in(b'\x6c', b'\x6d'):
+                            _LOGGER.info("Johan")
+                        elif byte4 in(b'\x70', b'\x71'):
+                            _LOGGER.info("Sandra")
+                        else:
+                            _LOGGER.info("Unknown user: %s", str(binascii.hexlify(byte4), 'utf-8'))
                     else:
                         _LOGGER.info("New unknown %s packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
+                        _LOGGER.info('PortScanner._read(): %s packet, part 1: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[0:8]), 'utf-8'))
+                        _LOGGER.info('PortScanner._read(): %s packet, part 2: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[8:16]), 'utf-8'))
 
                 else:
                     pass
