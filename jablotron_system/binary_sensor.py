@@ -78,6 +78,8 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from homeassistant.util.yaml import dump
+#Add MQTT
+from homeassistant.components import mqtt
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -160,6 +162,16 @@ class DeviceScanner():
         """ default binary strings for comparing states in d8 packets """
         self._old_bin_string = '0'.zfill(32)
         self._new_bin_string = '0'.zfill(32)
+
+        """Since MQTT is run on separate instance I will connect directly"""        
+        self._mqtt_enabled = True
+        _LOGGER.info("(__init__) MQTT enabled? %s", self._mqtt_enabled)
+        
+        if self._mqtt_enabled:
+          self._mqtt = hass.components.mqtt
+          self._data_topic = hass.data[DOMAIN]['data_topic']
+
+
 
         _LOGGER.info('DeviceScanner.__init__(): serial port: %s', format(self._file_path))
 
@@ -411,6 +423,7 @@ class DeviceScanner():
 
                     # Added based on panel and app states, needs to be evalutaed and thought of
                     elif byte5 == b'\x82' and byte6 == b'\x3e':
+                        payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
                         _LOGGER.info("App")
                         dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
                         _LOGGER.info('dec value: %s', str(dec))
@@ -423,7 +436,11 @@ class DeviceScanner():
                             _LOGGER.info("Sandra")
                         else:
                             _LOGGER.info("Unknown user: %s", str(binascii.hexlify(byte4), 'utf-8'))
+                        if self._mqtt_enabled:
+                            _LOGGER.info("Sending MQTT message with APP")
+                            self._mqtt.publish(self._data_topic, payload , retain=True)
                     elif byte5 == b'\x42' and byte6 == b'\x04':
+                        payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
                         _LOGGER.info("Panel Uppe")
                         dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
                         _LOGGER.info('dec value: %s', str(dec))
@@ -435,7 +452,11 @@ class DeviceScanner():
                             _LOGGER.info("Sandra")
                         else:
                             _LOGGER.info("Unknown user: %s", str(binascii.hexlify(byte4), 'utf-8'))
+                        if self._mqtt_enabled:
+                            _LOGGER.info("Sending MQTT message with APP")
+                            self._mqtt.publish(self._data_topic, payload , retain=True)                    
                     elif byte5 == b'\x82' and byte6 == b'\x04':
+                        payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
                         _LOGGER.info("Panel Nere")
                         dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
                         _LOGGER.info('dec value: %s', str(dec))
@@ -447,6 +468,9 @@ class DeviceScanner():
                             _LOGGER.info("Sandra")
                         else:
                             _LOGGER.info("Unknown user: %s", str(binascii.hexlify(byte4), 'utf-8'))
+                        if self._mqtt_enabled:
+                            _LOGGER.info("Sending MQTT message with APP")
+                            self._mqtt.publish(self._data_topic, payload , retain=True)
                     else:
                         _LOGGER.info("New unknown %s packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
                         _LOGGER.info('PortScanner._read(): %s packet, part 1: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[0:8]), 'utf-8'))
