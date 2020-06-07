@@ -7,7 +7,7 @@ Home Assistant component to arm and disarm the alarm system and read sensor stat
 
 Currently supports:
 - alarm control panel, to arm and disarm the Jablotron alarm system
-- binary sensor, to separately monitor Jablotron sensors
+- binary sensor, to separately monitor Jablotron sensors and interactions with panels and app
 
 ## Installation
 To use this component, copy all scripts to "<home assistant config dir>/custom_components/jablotron_system".
@@ -56,6 +56,7 @@ $ dmesg | grep hid
 If the mqtt: component has been properly configured on the local host (directly connected to the Jablotron system), the alarm_control_panel will publish states and listen for changed alarm states automatically. You could specify which topics should be used.
 - The `state_topic` will be used for announcing new states (MQTT messages will be retained)
 - The `command_topic` will be used for receiving incoming states from a remote alarm_control_panel.
+- the `data_topic` will be used for sending info on interactions with the panels or applications, who and which. only needed on local host
 
 On both hosts (local and remote) you need to setup an MQTT broker first of course.
 - On the local host you need specify topics. For example:
@@ -67,6 +68,7 @@ jablotron_system:
   code: !secret jablotron_code
   state_topic: "backend/alarm_control_panel/jablotron/state"
   command_topic: "backend/alarm_control_panel/jablotron/set"
+  data_topic: "backend/alarm_control_panel/jablotron/data"
 ```
 
 - On the remote host you need to setup a [MQTT alarm control panel](https://www.home-assistant.io/components/alarm_control_panel.mqtt/). For example:
