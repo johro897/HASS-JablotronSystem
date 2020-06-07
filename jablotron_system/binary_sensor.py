@@ -63,10 +63,13 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.components.binary_sensor import (
     PLATFORM_SCHEMA,
     BinarySensorEntity,
+    DEVICE_CLASSES_SCHEMA,
 )
 from homeassistant.const import (
     STATE_ON,
-    STATE_OFF
+    STATE_OFF,
+    CONF_NAME,
+    CONF_DEVICE_CLASS
 )
 import homeassistant.components.sensor as sensor
 import homeassistant.helpers.config_validation as cv
@@ -95,12 +98,14 @@ async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, asyn
 class JablotronSensor(BinarySensorEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, hass: HomeAssistantType, dev_id: str):
+    def __init__(self, hass: HomeAssistantType, dev_id: str, name: str, device_class: DEVICE_CLASSES_SCHEMA):
         self._hass = hass
         self._name = 'Jablotron sensor'
         self._state = STATE_OFF
         self.dev_id = dev_id
-        _LOGGER.info('JablotronSensor.__init__(): dev_id created: %s', self.dev_id)
+        self.dev_name = name
+        self.dev_class = device_class
+        _LOGGER.info('JablotronSensor.__init__(): dev_id created: %s and name: %s and class: %s', self.dev_id, self.dev_name, self.dev_class)
 
     @property
     def is_on(self):
@@ -116,7 +121,9 @@ class JablotronSensor(BinarySensorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-#        return self.name
+        if self.dev_name != '':
+            return self.dev_name
+        else:
         return self.dev_id
 
     @property
@@ -126,7 +133,7 @@ class JablotronSensor(BinarySensorEntity):
 
     @property
     def device_class(self):
-        return 'motion'
+        return self.dev_class
 
     async def async_seen(self, state: str = None):
         """Mark the device as seen."""
@@ -287,9 +294,9 @@ class DeviceScanner():
             await device.async_update_ha_state()
             return
 
-        """State received of unknown device"""
+        """State received of unknown device, default device class is motion"""
         dev_id = util.ensure_unique_string(dev_id, self.devices.keys())
-        device = JablotronSensor(self._hass, dev_id)
+        device = JablotronSensor(self._hass, dev_id, 'unknown', 'motion')
         self.devices[dev_id] = device
 
         await device.async_seen(state)
@@ -522,11 +529,12 @@ async def async_load_config(path: str, hass: HomeAssistantType, config: ConfigTy
     """
     dev_schema = vol.Schema({
         vol.Required('dev_id'): cv.string,
-#        vol.Required(CONF_NAME): cv.string,
+        vol.Optional(CONF_NAME, default=''): cv.string,
+        vol.Optional(CONF_DEVICE_CLASS, default='motion'): DEVICE_CLASSES_SCHEMA
 #        vol.Optional(CONF_ICON, default=None): vol.Any(None, cv.icon),
 #        vol.Optional('track', default=False): cv.boolean,
 #        vol.Optional(CONF_MAC, default=None):
-#            vol.Any(None, vol.All(cv.string, vol.Upper)),
+#        vol.Any(None, vol.All(cv.string, vol.Upper)),
 #        vol.Optional(CONF_AWAY_HIDE, default=DEFAULT_AWAY_HIDE): cv.boolean,
 #        vol.Optional('gravatar', default=None): vol.Any(None, cv.string),
 #        vol.Optional('picture', default=None): vol.Any(None, cv.string),
