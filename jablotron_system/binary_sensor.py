@@ -88,9 +88,10 @@ _LOGGER = logging.getLogger(__name__)
 
 devices = []
 YAML_DEVICES = 'jablotron_devices.yaml'
+LOG_INFO = 'jablotron.log'
 
 async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None):
-    yaml_path = hass.config.path(YAML_DEVICES)
+    yaml_path = hass.config.path(YAML_DEVICES)    
     devices = await async_load_config(yaml_path, hass, config, async_add_entities)
     data = DeviceScanner(hass, config, async_add_entities, devices)
 
@@ -105,7 +106,7 @@ class JablotronSensor(BinarySensorEntity):
         self.dev_id = dev_id
         self.dev_name = name
         self.dev_class = device_class
-        _LOGGER.info('JablotronSensor.__init__(): dev_id created: %s and name: %s and class: %s', self.dev_id, self.dev_name, self.dev_class)
+        _LOGGER.info('JablotronSensor.__init__(): dev_id created: %s name: %s class: %s', self.dev_id, self.dev_name, self.dev_class)
 
     @property
     def is_on(self):
@@ -124,7 +125,7 @@ class JablotronSensor(BinarySensorEntity):
         if self.dev_name != '':
             return self.dev_name
         else:
-        return self.dev_id
+            return self.dev_id
 
     @property
     def state(self):
@@ -295,7 +296,7 @@ class DeviceScanner():
             return
 
         """State received of unknown device, default device class is motion"""
-        dev_id = util.ensure_unique_string(dev_id, self.devices.keys())
+        dev_id = util.ensure_unique_string(dev_id, self.devices.keys())        
         device = JablotronSensor(self._hass, dev_id, 'unknown', 'motion')
         self.devices[dev_id] = device
 
@@ -395,7 +396,10 @@ class DeviceScanner():
                     byte4 = packetpart[3:4]  # 4th byte, state of device
                     byte5 = packetpart[4:5]  # 5th byte, first part of device ID
                     byte6 = packetpart[5:6]  # 6th byte, second part of device ID                    
-                    _LOGGER.info('Sensor ID: %s%s : State: %s', str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8') )
+                    _LOGGER.debug('Sensor ID: %s%s : State: %s', str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8') )
+                    log = "device: %s%s : state: %s" % (str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
+                    write_log(self._hass, log)
+
 #                    _LOGGER.info('State: %s', str(binascii.hexlify(byte4), 'utf-8') )
                     
                     """Only process specific state changes"""
@@ -418,9 +422,9 @@ class DeviceScanner():
 
                         """Decode sensor ID from 5th and 6th byte"""
                         dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
-                        _LOGGER.info('dec value: %s', str(dec))
+                        #_LOGGER.info('dec value: %s', str(dec))
                         i = int(dec/64)
-                        _LOGGER.info('Decode sensor: %s', str(i))
+                        #_LOGGER.info('Decode sensor: %s', str(i))
                         dev_id = 'jablotron_' + str(i)
                         entity_id = 'binary_sensor.' + dev_id
                         """ Create or update sensor """
@@ -482,7 +486,7 @@ class DeviceScanner():
                         _LOGGER.info("New unknown %s packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
                         _LOGGER.info('PortScanner._read(): %s packet, part 1: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[0:8]), 'utf-8'))
                         _LOGGER.info('PortScanner._read(): %s packet, part 2: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[8:16]), 'utf-8'))
-
+                    
                 else:
                     pass
 #                    _LOGGER.info("Unknown packet: %s", packet)
@@ -563,16 +567,17 @@ async def async_load_config(path: str, hass: HomeAssistantType, config: ConfigTy
 #        device.pop('vendor', None)
         try:
             device = dev_schema(device)
-            device['dev_id'] = cv.slugify(dev_id)
+            device['dev_id'] = cv.slugify(dev_id)      
         except vol.Invalid as exp:
             async_log_exception(exp, dev_id, devices, hass)
-        else:
+        else:           
+            _LOGGER.debug('device: %s', device)
             dev = JablotronSensor(hass, **device)
             result.append(dev)
 
             """ Create sensors for each device in devices """
 #            device = JablotronSensor(hass, dev_id)
-            async_add_entities([dev])
+            async_add_entities([dev])        
     return result
 
 def update_config(path: str, dev_id: str, device: JablotronSensor):
@@ -591,3 +596,15 @@ def update_config(path: str, dev_id: str, device: JablotronSensor):
         out.write('\n')
         out.write(dump(device))
     _LOGGER.debug('update_config(): updated %s with sensor %s', path, dev_id)
+
+def write_log(hass, log: str):
+    # Converting datetime object to string
+    secondsSinceEpoch = time.time()
+    timeObj = time.localtime(secondsSinceEpoch)
+    timestampStr = '%d-%02d-%02d %02d:%02d:%02d' % (timeObj.tm_year, timeObj.tm_mon, timeObj.tm_mday, timeObj.tm_hour, timeObj.tm_min, timeObj.tm_sec)
+    
+    log = "%s : %s" % (timestampStr, log)
+    path = hass.config.path(LOG_INFO)
+    with open(path, 'a') as out:
+        out.write('\n')
+        out.write(log)
