@@ -55,6 +55,7 @@ import time
 import asyncio
 import threading
 import voluptuous as vol
+import os
 
 from . import DOMAIN
 
@@ -87,10 +88,12 @@ from homeassistant.components import mqtt
 _LOGGER = logging.getLogger(__name__)
 
 devices = []
-YAML_DEVICES = 'jablotron_devices.yaml'
-LOG_INFO = 'jablotron.log'
+YAML_DEVICES = 'jablotron/jablotron_devices.yaml'
+LOG_INFO = 'jablotron/jablotron.log'
 
 async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None):
+    if not os.path.exists(hass.config.path('jablotron')):
+        os.makedirs(hass.config.path('jablotron'))
     yaml_path = hass.config.path(YAML_DEVICES)    
     devices = await async_load_config(yaml_path, hass, config, async_add_entities)
     data = DeviceScanner(hass, config, async_add_entities, devices)
