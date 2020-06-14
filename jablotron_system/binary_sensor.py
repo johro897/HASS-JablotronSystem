@@ -436,61 +436,32 @@ class DeviceScanner():
                         )
 
                     # Added based on panel and app states, needs to be evalutaed and thought of
-                    elif byte5 == b'\x82' and byte6 == b'\x3e':
-                        payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
-                        _LOGGER.info("App")
-                        dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
-                        _LOGGER.info('dec value: %s', str(dec))
-                        i = int(dec/64)
-                        _LOGGER.info('Decode sensor: %s', str(i))
-                        dev_id = 'jablotron_' + str(i)
-                        if byte4 in(b'\x6c', b'\x6d'):
-                            _LOGGER.info("Johan")
-                        elif byte4 in(b'\x70', b'\x71'):
-                            _LOGGER.info("Sandra")
+                    # om man skickar disarm/armed_away/armed_home
+                    elif byte3 in (b'\xae', b'\x0c', b'\x2e'):
+                        _LOGGER.info('State: %s', translate_hex(str(binascii.hexlify(byte3), 'utf-8')))
+                        #om användaren är från app
+                        if byte4 in (b'\x6c', b'\x70', b'\x74'):
+                            _LOGGER.info('APP')
+                            _LOGGER.info('user: %s', translate_hex(str(binascii.hexlify(byte4), 'utf-8')))
+                        elif byte4 in (b'\x6d', b'\x71', b'\x76'):
+                            _LOGGER.info('Panel')
+                            _LOGGER.info('user: %s', translate_hex(str(binascii.hexlify(byte4), 'utf-8')))
                         else:
-                            _LOGGER.info("Unknown user: %s", str(binascii.hexlify(byte4), 'utf-8'))
-                        if self._mqtt_enabled:
+                            _LOGGER.info('New unknown user: %s', str(binascii.hexlify(byte4), 'utf-8'))
+                        
+                        if self._mqtt_enabled:                            
+                            payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
                             _LOGGER.info("Sending MQTT message with APP")
                             self._mqtt.publish(self._data_topic, payload , retain=True)
-                    elif byte5 == b'\x42' and byte6 == b'\x04':
-                        payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
-                        _LOGGER.info("Panel Uppe")
-                        dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
-                        _LOGGER.info('dec value: %s', str(dec))
-                        i = int(dec/64)
-                        _LOGGER.info('Decode sensor: %s', str(i))                        
-                        if byte4 in(b'\x6c', b'\x6d'):
-                            _LOGGER.info("Johan")
-                        elif byte4 in(b'\x70', b'\x71'):
-                            _LOGGER.info("Sandra")
-                        else:
-                            _LOGGER.info("Unknown user: %s", str(binascii.hexlify(byte4), 'utf-8'))
-                        if self._mqtt_enabled:
-                            _LOGGER.info("Sending MQTT message with APP")
-                            self._mqtt.publish(self._data_topic, payload , retain=True)                    
-                    elif byte5 == b'\x82' and byte6 == b'\x04':
-                        payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
-                        _LOGGER.info("Panel Nere")
-                        dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
-                        _LOGGER.info('dec value: %s', str(dec))
-                        i = int(dec/64)
-                        _LOGGER.info('Decode sensor: %s', str(i))                        
-                        if byte4 in(b'\x6c', b'\x6d'):
-                            _LOGGER.info("Johan")
-                        elif byte4 in(b'\x70', b'\x71'):
-                            _LOGGER.info("Sandra")
-                        else:
-                            _LOGGER.info("Unknown user: %s", str(binascii.hexlify(byte4), 'utf-8'))
-                        if self._mqtt_enabled:
-                            _LOGGER.info("Sending MQTT message with APP")
-                            self._mqtt.publish(self._data_topic, payload , retain=True)
+
                     else:
                         _LOGGER.info("New unknown %s packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
                         _LOGGER.info('PortScanner._read(): %s packet, part 1: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[0:8]), 'utf-8'))
                         _LOGGER.info('PortScanner._read(): %s packet, part 2: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[8:16]), 'utf-8'))
                     
                 else:
+#                    log = "Unknown packet: %s" % str(binascii.hexlify(packet))
+#                    write_log(self._hass, log)
                     pass
 #                    _LOGGER.info("Unknown packet: %s", packet)
 #                    self._stop.set()
@@ -611,3 +582,19 @@ def write_log(hass, log: str):
     with open(path, 'a') as out:
         out.write('\n')
         out.write(log)
+        
+def translate_hex(hex: str):
+    if hex == '6c' or hex == '6d':
+        return "Johan"
+    elif hex == '70' or hex == '71':
+        return "Sandra"
+    elif hex == '74' or hex == '75':
+        return "Casper"
+    elif hex == 'ae':
+        return "armed_home"
+    elif hex == '2e':
+        return "armed_away"
+    elif hex == '0c':
+        return "disarm"
+    else:
+        return "unknown"
