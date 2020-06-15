@@ -4,7 +4,7 @@ import re
 import time
 import asyncio
 import threading
-
+import binascii
 
 from . import DOMAIN
 
@@ -29,7 +29,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None):
     async_add_entities([JablotronAlarm(hass, config)])
 
-class JablotronAlarm(alarm.AlarmControlPanel):
+class JablotronAlarm(alarm.AlarmControlPanelEntity):
     """Representation of a Jaboltron alarm status."""
 
     def __init__(self, hass, config):
@@ -188,8 +188,8 @@ class JablotronAlarm(alarm.AlarmControlPanel):
                     if self._mqtt_enabled:
                         # "arming" is not recognized as an MQTT alarm state, so we'll use "pending" instead.
                         # https://www.home-assistant.io/components/alarm_control_panel.mqtt
-                        if new_state == "arming":
-                            new_state = "pending"
+                        # if new_state == "arming":
+                            # new_state = "pending"
 
                         # Send MQTT message with new state
                         _LOGGER.info("Sending MQTT message with state '%s' to remote alarm_control_panel", new_state)
@@ -257,8 +257,7 @@ class JablotronAlarm(alarm.AlarmControlPanel):
 
                 self._data_flowing.clear()
                 packet = self._f.read(64)
-                self._data_flowing.set()
-
+                self._data_flowing.set()                
                 if not packet:
                     _LOGGER.warn("No packets")
                     self._available = False
@@ -267,6 +266,7 @@ class JablotronAlarm(alarm.AlarmControlPanel):
                 self._available = True
 
                 if packet[:2] == b'\x82\x01': # Jablotron JA-82
+                    #_LOGGER.info("JA-80")
                     self._model = 'Jablotron JA-80 Series'
                     state = ja82codes.get(packet[2:3])
 
@@ -277,8 +277,10 @@ class JablotronAlarm(alarm.AlarmControlPanel):
                         break
 
                 elif packet[:2] == b'\x51\x22' or packet[14:16] == b'\x51\x22': # Jablotron JA-100
+                    #_LOGGER.info("JA-100")
+                    #_LOGGER.info("Packet: %s", str(binascii.hexlify(packet), 'utf-8'))
                     self._model = 'Jablotron JA-100 Series'
-
+                    
                     if packet[:2] == b'\x51\x22':
                         state = ja100codes.get(packet[2:3])
                     elif packet[14:16] == b'\x51\x22':
@@ -291,7 +293,7 @@ class JablotronAlarm(alarm.AlarmControlPanel):
                         self._startup_message() # let's try sending another startup message here!
                         break
 
-#                else:         
+ #               else:
 #                    _LOGGER.info("Unknown packet: %s", packet)
 #                    _LOGGER.error("Unrecognised data stream, device type likely not a JA-82 or JA101 control panel. Please raise an issue at https://github.com/mattsaxon/HASS-Jablotron80/issues with this packet info [%s]", packet)
 #                    self._stop.set() 

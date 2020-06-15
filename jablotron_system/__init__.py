@@ -16,8 +16,11 @@ CONF_CODE_ARM_REQUIRED = 'code_arm_required'
 CONF_CODE_DISARM_REQUIRED = 'code_disarm_required'
 CONF_STATE_TOPIC = 'state_topic'
 CONF_COMMAND_TOPIC = 'command_topic'
+CONF_DATA_TOPIC = 'data_topic'
 DEFAULT_STATE_TOPIC = 'home-assistant/mqtt_example/state'
 DEFAULT_COMMAND_TOPIC = 'home-assistant/mqtt_example/set'
+DEFAULT_DATA_TOPIC = 'home-assistant/mqtt_example/data'
+
 
 # code required, since binary_sensor is using code to get 55 packets send
 CONFIG_SCHEMA = vol.Schema({
@@ -28,7 +31,8 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_CODE_DISARM_REQUIRED, default=True): cv.boolean,
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_STATE_TOPIC, default=DEFAULT_STATE_TOPIC): mqtt.valid_subscribe_topic,
-        vol.Optional(CONF_COMMAND_TOPIC, default=DEFAULT_COMMAND_TOPIC): mqtt.valid_subscribe_topic
+        vol.Optional(CONF_COMMAND_TOPIC, default=DEFAULT_COMMAND_TOPIC): mqtt.valid_subscribe_topic,
+        vol.Optional(CONF_DATA_TOPIC, default=DEFAULT_DATA_TOPIC): mqtt.valid_subscribe_topic
     })
 }, extra=vol.ALLOW_EXTRA)
 

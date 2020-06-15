@@ -55,6 +55,7 @@ import time
 import asyncio
 import threading
 import voluptuous as vol
+import os
 
 from . import DOMAIN
 
@@ -63,10 +64,13 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.components.binary_sensor import (
     PLATFORM_SCHEMA,
     BinarySensorEntity,
+    DEVICE_CLASSES_SCHEMA,
 )
 from homeassistant.const import (
     STATE_ON,
-    STATE_OFF
+    STATE_OFF,
+    CONF_NAME,
+    CONF_DEVICE_CLASS
 )
 import homeassistant.components.sensor as sensor
 import homeassistant.helpers.config_validation as cv
@@ -78,14 +82,19 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from homeassistant.util.yaml import dump
+#Add MQTT
+from homeassistant.components import mqtt
 
 _LOGGER = logging.getLogger(__name__)
 
 devices = []
-YAML_DEVICES = 'jablotron_devices.yaml'
+YAML_DEVICES = 'jablotron/jablotron_devices.yaml'
+LOG_INFO = 'jablotron/jablotron.log'
 
 async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None):
-    yaml_path = hass.config.path(YAML_DEVICES)
+    if not os.path.exists(hass.config.path('jablotron')):
+        os.makedirs(hass.config.path('jablotron'))
+    yaml_path = hass.config.path(YAML_DEVICES)    
     devices = await async_load_config(yaml_path, hass, config, async_add_entities)
     data = DeviceScanner(hass, config, async_add_entities, devices)
 
@@ -93,12 +102,14 @@ async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, asyn
 class JablotronSensor(BinarySensorEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, hass: HomeAssistantType, dev_id: str):
+    def __init__(self, hass: HomeAssistantType, dev_id: str, name: str, device_class: DEVICE_CLASSES_SCHEMA):
         self._hass = hass
         self._name = 'Jablotron sensor'
         self._state = STATE_OFF
         self.dev_id = dev_id
-        _LOGGER.info('JablotronSensor.__init__(): dev_id created: %s', self.dev_id)
+        self.dev_name = name
+        self.dev_class = device_class
+        _LOGGER.info('JablotronSensor.__init__(): dev_id created: %s name: %s class: %s', self.dev_id, self.dev_name, self.dev_class)
 
     @property
     def is_on(self):
@@ -114,8 +125,10 @@ class JablotronSensor(BinarySensorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-#        return self.name
-        return self.dev_id
+        if self.dev_name != '':
+            return self.dev_name
+        else:
+            return self.dev_id
 
     @property
     def state(self):
@@ -124,7 +137,7 @@ class JablotronSensor(BinarySensorEntity):
 
     @property
     def device_class(self):
-        return 'motion'
+        return self.dev_class
 
     async def async_seen(self, state: str = None):
         """Mark the device as seen."""
@@ -160,6 +173,16 @@ class DeviceScanner():
         """ default binary strings for comparing states in d8 packets """
         self._old_bin_string = '0'.zfill(32)
         self._new_bin_string = '0'.zfill(32)
+
+        """Since MQTT is run on separate instance I will connect directly"""        
+        self._mqtt_enabled = True
+        _LOGGER.info("(__init__) MQTT enabled? %s", self._mqtt_enabled)
+        
+        if self._mqtt_enabled:
+          self._mqtt = hass.components.mqtt
+          self._data_topic = hass.data[DOMAIN]['data_topic']
+
+
 
         _LOGGER.info('DeviceScanner.__init__(): serial port: %s', format(self._file_path))
 
@@ -275,9 +298,9 @@ class DeviceScanner():
             await device.async_update_ha_state()
             return
 
-        """State received of unknown device"""
-        dev_id = util.ensure_unique_string(dev_id, self.devices.keys())
-        device = JablotronSensor(self._hass, dev_id)
+        """State received of unknown device, default device class is motion"""
+        dev_id = util.ensure_unique_string(dev_id, self.devices.keys())        
+        device = JablotronSensor(self._hass, dev_id, 'unknown', 'motion')
         self.devices[dev_id] = device
 
         await device.async_seen(state)
@@ -375,8 +398,11 @@ class DeviceScanner():
                     byte3 = packetpart[2:3]  # 3rd byte, ??
                     byte4 = packetpart[3:4]  # 4th byte, state of device
                     byte5 = packetpart[4:5]  # 5th byte, first part of device ID
-                    byte6 = packetpart[5:6]  # 6th byte, second part of device ID
-                    _LOGGER.info('Sensor ID: %s%s : State: %s', str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8') )
+                    byte6 = packetpart[5:6]  # 6th byte, second part of device ID                    
+                    _LOGGER.debug('Sensor ID: %s%s : State: %s', str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8') )
+                    log = "device: %s%s : state: %s" % (str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
+                    write_log(self._hass, log)
+
 #                    _LOGGER.info('State: %s', str(binascii.hexlify(byte4), 'utf-8') )
                     
                     """Only process specific state changes"""
@@ -399,8 +425,9 @@ class DeviceScanner():
 
                         """Decode sensor ID from 5th and 6th byte"""
                         dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
+                        #_LOGGER.info('dec value: %s', str(dec))
                         i = int(dec/64)
-
+                        #_LOGGER.info('Decode sensor: %s', str(i))
                         dev_id = 'jablotron_' + str(i)
                         entity_id = 'binary_sensor.' + dev_id
                         """ Create or update sensor """
@@ -408,25 +435,33 @@ class DeviceScanner():
                             self.async_see(dev_id, _device_state)
                         )
 
-                    elif byte3 == b'\x0c':
-                        # we don't know yet. Must be some keep alive packet from a sensor who hasn't been triggered in a loooong time
-                        _LOGGER.debug("Unrecognized %s 0c packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
-                        _LOGGER.debug("Probably Control Panel OFF?")
-
-                    elif byte3 == b'\x2e':
-                        # we don't know yet. Must be some keep alive packet from a sensor who hasn't been triggered in a loooong time
-                        _LOGGER.debug("Unrecognized %s 2e packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
-                        _LOGGER.debug("Probably Control Panel ON?")
-
-                    elif byte3 == b'\x4f':
-                        # we don't know yet. Must be some keep alive packet from a sensor who hasn't been triggered in a loooong time
-                        _LOGGER.debug("Unrecognized %s 4f packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
-                        _LOGGER.debug("Probably some keep alive packet from a sensor which hasn't been triggered recently")
+                    # Added based on panel and app states, needs to be evalutaed and thought of
+                    # om man skickar disarm/armed_away/armed_home
+                    elif byte3 in (b'\xae', b'\x0c', b'\x2e'):
+                        _LOGGER.info('State: %s', translate_hex(str(binascii.hexlify(byte3), 'utf-8')))
+                        #om användaren är från app
+                        if byte4 in (b'\x6c', b'\x70', b'\x74'):
+                            _LOGGER.info('APP')
+                            _LOGGER.info('user: %s', translate_hex(str(binascii.hexlify(byte4), 'utf-8')))
+                        elif byte4 in (b'\x6d', b'\x71', b'\x76'):
+                            _LOGGER.info('Panel')
+                            _LOGGER.info('user: %s', translate_hex(str(binascii.hexlify(byte4), 'utf-8')))
+                        else:
+                            _LOGGER.info('New unknown user: %s', str(binascii.hexlify(byte4), 'utf-8'))
+                        
+                        if self._mqtt_enabled:                            
+                            payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
+                            _LOGGER.info("Sending MQTT message with APP")
+                            self._mqtt.publish(self._data_topic, payload , retain=True)
 
                     else:
                         _LOGGER.info("New unknown %s packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
-
+                        _LOGGER.info('PortScanner._read(): %s packet, part 1: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[0:8]), 'utf-8'))
+                        _LOGGER.info('PortScanner._read(): %s packet, part 2: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[8:16]), 'utf-8'))
+                    
                 else:
+#                    log = "Unknown packet: %s" % str(binascii.hexlify(packet))
+#                    write_log(self._hass, log)
                     pass
 #                    _LOGGER.info("Unknown packet: %s", packet)
 #                    self._stop.set()
@@ -472,11 +507,12 @@ async def async_load_config(path: str, hass: HomeAssistantType, config: ConfigTy
     """
     dev_schema = vol.Schema({
         vol.Required('dev_id'): cv.string,
-#        vol.Required(CONF_NAME): cv.string,
+        vol.Optional(CONF_NAME, default=''): cv.string,
+        vol.Optional(CONF_DEVICE_CLASS, default='motion'): DEVICE_CLASSES_SCHEMA
 #        vol.Optional(CONF_ICON, default=None): vol.Any(None, cv.icon),
 #        vol.Optional('track', default=False): cv.boolean,
 #        vol.Optional(CONF_MAC, default=None):
-#            vol.Any(None, vol.All(cv.string, vol.Upper)),
+#        vol.Any(None, vol.All(cv.string, vol.Upper)),
 #        vol.Optional(CONF_AWAY_HIDE, default=DEFAULT_AWAY_HIDE): cv.boolean,
 #        vol.Optional('gravatar', default=None): vol.Any(None, cv.string),
 #        vol.Optional('picture', default=None): vol.Any(None, cv.string),
@@ -505,16 +541,17 @@ async def async_load_config(path: str, hass: HomeAssistantType, config: ConfigTy
 #        device.pop('vendor', None)
         try:
             device = dev_schema(device)
-            device['dev_id'] = cv.slugify(dev_id)
+            device['dev_id'] = cv.slugify(dev_id)      
         except vol.Invalid as exp:
             async_log_exception(exp, dev_id, devices, hass)
-        else:
+        else:           
+            _LOGGER.debug('device: %s', device)
             dev = JablotronSensor(hass, **device)
             result.append(dev)
 
             """ Create sensors for each device in devices """
 #            device = JablotronSensor(hass, dev_id)
-            async_add_entities([dev])
+            async_add_entities([dev])        
     return result
 
 def update_config(path: str, dev_id: str, device: JablotronSensor):
@@ -533,3 +570,31 @@ def update_config(path: str, dev_id: str, device: JablotronSensor):
         out.write('\n')
         out.write(dump(device))
     _LOGGER.debug('update_config(): updated %s with sensor %s', path, dev_id)
+
+def write_log(hass, log: str):
+    # Converting datetime object to string
+    secondsSinceEpoch = time.time()
+    timeObj = time.localtime(secondsSinceEpoch)
+    timestampStr = '%d-%02d-%02d %02d:%02d:%02d' % (timeObj.tm_year, timeObj.tm_mon, timeObj.tm_mday, timeObj.tm_hour, timeObj.tm_min, timeObj.tm_sec)
+    
+    log = "%s : %s" % (timestampStr, log)
+    path = hass.config.path(LOG_INFO)
+    with open(path, 'a') as out:
+        out.write('\n')
+        out.write(log)
+        
+def translate_hex(hex: str):
+    if hex == '6c' or hex == '6d':
+        return "Johan"
+    elif hex == '70' or hex == '71':
+        return "Sandra"
+    elif hex == '74' or hex == '75':
+        return "Casper"
+    elif hex == 'ae':
+        return "armed_home"
+    elif hex == '2e':
+        return "armed_away"
+    elif hex == '0c':
+        return "disarm"
+    else:
+        return "unknown"
