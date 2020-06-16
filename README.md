@@ -8,7 +8,7 @@ Home Assistant component to arm and disarm the alarm system and read sensor stat
 Currently supports:
 - alarm control panel, to arm and disarm the Jablotron alarm system
 - binary sensor, to separately monitor Jablotron sensors and interactions with panels and app
-- MQTT for sensor activities, arming/disarming activites
+- MQTT for sensor activities, arming/disarming activites(who armed)
 - Extended configurations, add name and sensor type in YAML file
 
 ## Installation
