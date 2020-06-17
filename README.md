@@ -2,6 +2,7 @@
 Jablotron component for Home Assistant adapted from:
 - Binary Sensor, https://github.com/plaksnor/HASS-JablotronSystem, maintained by @plaksnor
 - Alarm Control Panel, https://github.com/Horsi70/HASS-JablotronSystem, maintained by @Horsi70
+Adaptations made for my personal Jablotron setup and improvements I felt was needed. Also some removal of un used code.
 
 Home Assistant component to arm and disarm the alarm system and read sensor states.
 
