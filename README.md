@@ -10,6 +10,7 @@ Currently supports:
 - binary sensor, to separately monitor Jablotron sensors and interactions with panels and app
 - MQTT for sensor activities, arming/disarming activites(who armed)
 - Extended configurations, add name and sensor type in YAML file
+- Specific log file for test purpose, saves data without risk of accidently deleting when restarting HA
 
 ## Installation
 To use this component, copy all scripts to "<home assistant config dir>/custom_components/jablotron_system".
