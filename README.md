@@ -30,6 +30,7 @@ Optional arguments are:
   code_disarm_required: True
   state_topic: "backend/alarm_control_panel/jablotron/state"
   command_topic: "backend/alarm_control_panel/jablotron/set"
+  data_topic: "backend/alarm_control_panel/jablotron/data"
 ```
 
 Note: Because my serial cable presents as a HID device there format is /dev/hidraw[x], others that present as serial may be at /dev/ttyUSB0 or similar. Use the following command line to identify the appropriate device:
