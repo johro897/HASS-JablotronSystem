@@ -12,6 +12,7 @@ Currently supports:
 - binary sensor, to separately monitor Jablotron sensors and interactions with panels and app
 - MQTT for sensor activities, arming/disarming activites(who armed)
 - Extended configurations, add name and sensor type in YAML file
+- Yaml file of users to be able to find who armed/disarmed and if they did it from local or remote
 - Specific log file for test purpose, saves data without risk of accidently deleting when restarting HA
 
 ## Installation
@@ -48,7 +49,11 @@ $ dmesg | grep hid
 - In the jablotron_devices.yaml located in jablotron folder you can customize each sensor:
   - friendly_name : give it a human readable name
   - device_class  : give it a class which matches the device (default is motion)
-
+- In the jablotron_users.yaml  located in jablotron folder you can specify users:
+  - user_name : the name of the user
+  - remote_id : the id used when interacting trough an application
+  - local_id : the id used when interacting  trough a local panel
+  
 ## Find necessary sensor data
 - All sensors will send 2 packets of data when triggered
 - First packet is of interest and needs to be analysed in order to be added to binary sensor code
