@@ -87,16 +87,25 @@ from homeassistant.components import mqtt
 
 _LOGGER = logging.getLogger(__name__)
 
+users = []
 devices = []
 YAML_DEVICES = 'jablotron/jablotron_devices.yaml'
 LOG_INFO = 'jablotron/jablotron.log'
+YAML_USERS = 'jablotron/jablotron_users.yaml'
 
 async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None):
     if not os.path.exists(hass.config.path('jablotron')):
         os.makedirs(hass.config.path('jablotron'))
-    yaml_path = hass.config.path(YAML_DEVICES)    
+    yaml_path = hass.config.path(YAML_DEVICES)
+    user_path = hass.config.path(YAML_USERS)
     devices = await async_load_config(yaml_path, hass, config, async_add_entities)
-    data = DeviceScanner(hass, config, async_add_entities, devices)
+    users = await async_load_users(user_path, hass, config, async_add_entities)
+    _LOGGER.info('setup: %s', users)
+    for user in users:
+        _LOGGER.info('user: %s', user)
+        _LOGGER.info('remote: %s', user['remote_id'])
+        _LOGGER.info('local: %s', user['local_id'])
+    data = DeviceScanner(hass, config, async_add_entities, devices, users)
 
 
 class JablotronSensor(BinarySensorEntity):
@@ -152,7 +161,7 @@ class JablotronSensor(BinarySensorEntity):
 class DeviceScanner():
     """ Read configuration and serial port and check for incoming data"""
 
-    def __init__(self, hass, config, async_add_entities, devices):
+    def __init__(self, hass, config, async_add_entities, devices, users):
         self._state = None
         self._sub_state = None
         self._file_path = hass.data[DOMAIN]['port']
@@ -166,6 +175,7 @@ class DeviceScanner():
         self._data_flowing = threading.Event()
         self._async_add_entities = async_add_entities
         self.devices = {dev.dev_id: dev for dev in devices}
+        self.users = users
         self._is_updating = asyncio.Lock()
         self._activation_packet = b''
         self._mode = '55'
@@ -181,8 +191,6 @@ class DeviceScanner():
         if self._mqtt_enabled:
           self._mqtt = hass.components.mqtt
           self._data_topic = hass.data[DOMAIN]['data_topic']
-
-
 
         _LOGGER.info('DeviceScanner.__init__(): serial port: %s', format(self._file_path))
 
@@ -402,6 +410,7 @@ class DeviceScanner():
                     _LOGGER.debug('Sensor ID: %s%s : State: %s', str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8') )
                     log = "device: %s%s : state: %s" % (str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
                     write_log(self._hass, log)
+                    
 
 #                    _LOGGER.info('State: %s', str(binascii.hexlify(byte4), 'utf-8') )
                     
@@ -438,27 +447,26 @@ class DeviceScanner():
                     # Added based on panel and app states, needs to be evalutaed and thought of
                     # om man skickar disarm/armed_away/armed_home
                     elif byte3 in (b'\xae', b'\x0c', b'\x2e'):
-                        _LOGGER.info('State: %s', translate_hex(str(binascii.hexlify(byte3), 'utf-8')))
-                        #om användaren är från app
-                        if byte4 in (b'\x6c', b'\x70', b'\x74'):
-                            _LOGGER.info('APP')
-                            _LOGGER.info('user: %s', translate_hex(str(binascii.hexlify(byte4), 'utf-8')))
-                        elif byte4 in (b'\x6d', b'\x71', b'\x76'):
-                            _LOGGER.info('Panel')
-                            _LOGGER.info('user: %s', translate_hex(str(binascii.hexlify(byte4), 'utf-8')))
-                        else:
-                            _LOGGER.info('New unknown user: %s', str(binascii.hexlify(byte4), 'utf-8'))
-                        
+                        if byte3 == b'\xae':
+                            state = '{"state":"armed_home",'
+                        elif byte3 == b'\x0c':
+                            state = '{"state":"disarm",'
+                        elif byte3 == b'\x2e':
+                            state = '{"state":"armed_away",'
+                            
+                        log = "User remote: %s" % translate_hex(str(binascii.hexlify(byte4), 'utf-8'), self.users)
+                        write_log(self._hass, log)
+
                         if self._mqtt_enabled:                            
-                            payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
-                            _LOGGER.info("Sending MQTT message with APP")
+                            #payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
+                            payload = state + translate_hex(str(binascii.hexlify(byte4), 'utf-8'), self.users)
                             self._mqtt.publish(self._data_topic, payload , retain=True)
 
                     else:
                         _LOGGER.info("New unknown %s packet: %s %s %s %s", str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'))
                         _LOGGER.info('PortScanner._read(): %s packet, part 1: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[0:8]), 'utf-8'))
                         _LOGGER.info('PortScanner._read(): %s packet, part 2: %s', str(binascii.hexlify(packet[0:2]), 'utf-8'), str(binascii.hexlify(packet[8:16]), 'utf-8'))
-                    
+
                 else:
 #                    log = "Unknown packet: %s" % str(binascii.hexlify(packet))
 #                    write_log(self._hass, log)
@@ -576,25 +584,55 @@ def write_log(hass, log: str):
     secondsSinceEpoch = time.time()
     timeObj = time.localtime(secondsSinceEpoch)
     timestampStr = '%d-%02d-%02d %02d:%02d:%02d' % (timeObj.tm_year, timeObj.tm_mon, timeObj.tm_mday, timeObj.tm_hour, timeObj.tm_min, timeObj.tm_sec)
-    
+
     log = "%s : %s" % (timestampStr, log)
     path = hass.config.path(LOG_INFO)
     with open(path, 'a') as out:
         out.write('\n')
         out.write(log)
-        
-def translate_hex(hex: str):
-    if hex == '6c' or hex == '6d':
-        return "Johan"
-    elif hex == '70' or hex == '71':
-        return "Sandra"
-    elif hex == '74' or hex == '75':
-        return "Casper"
-    elif hex == 'ae':
-        return "armed_home"
-    elif hex == '2e':
-        return "armed_away"
-    elif hex == '0c':
-        return "disarm"
-    else:
-        return "unknown"
+
+def translate_hex(hex: str, users):
+    for user in users:
+        if user['remote_id'] == hex:
+            response = '"local":"false","user":"%s"}' % ( user['user_name'] )
+            return response
+        elif user['local_id'] == hex:
+            response = 'local":"true","user":"%s"}' % ( user['user_name'] )
+            return response
+    return 'local":"unknown","user":"unknown"}' 
+
+
+async def async_load_users(path: str, hass: HomeAssistantType, config: ConfigType, async_add_entities):
+    """Load devices from YAML configuration file.
+    This method is a coroutine.
+    """
+    user_schema = vol.Schema({
+        vol.Required('user_name'): cv.string,
+        vol.Optional('remote_id', default=''): cv.string,
+        vol.Optional('local_id', default=''): cv.string,
+    })
+    result = []
+    try:
+        _LOGGER.debug("async_load_users(): reading config file %s", path)
+        users = await hass.async_add_job(
+            load_yaml_config_file, path)
+
+        _LOGGER.debug('async_load_users(): devices loaded from config file: %s', users)
+
+    except HomeAssistantError as err:
+        _LOGGER.error("async_load_users(): unable to load %s: %s", path, str(err))
+        return []
+    except FileNotFoundError as err:
+        _LOGGER.info("async_load_users(): file %s could not be found: %s", path, str(err))
+        return []
+
+
+    for user_name, user in users.items():
+        try:
+            user = user_schema(user)
+        except vol.Invalid as exp:
+            _LOGGER.info("in except")
+            async_log_exception(exp, user_name, users, hass)
+        else:
+            result.append(user)
+    return result
