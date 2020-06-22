@@ -13,7 +13,7 @@ Currently supports:
 - MQTT for sensor activities, arming/disarming activites(who armed)
 - Extended configurations, add name and sensor type in YAML file
 - Yaml file of users to be able to find who armed/disarmed and if they did it from local or remote
-- Specific log file for test purpose, saves data without risk of accidently deleting when restarting HA
+- Specific log file for test purpose, saves data without risk of accidently deleting when restarting HA, used when sniffing packages
 
 ## Installation
 To use this component, copy all scripts to "<home assistant config dir>/custom_components/jablotron_system".
@@ -60,6 +60,11 @@ $ dmesg | grep hid
 - A sensor will send both on and off info
 - On seems to be a hex value that is 2 lower then off value
 - On value should be added, if not already existing, to the binary sensor code
+
+## Find necessary user data
+- Each user have 2 IDs, one that is used when interacting with a panel, local_id, and one used when interacting trough an application, remote_id
+- these id's seems to be even for remote and odd for local, local being remote+1
+- an unknown ID will be written to the jablotron log 
 
 ## Enable MQTT support
 **Alarm_control_panel**
