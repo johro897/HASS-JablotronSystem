@@ -449,11 +449,8 @@ class DeviceScanner():
                         elif byte3 == b'\x2e':
                             state = '{"state":"armed_away",'
 
-
-                        write_log(self._hass, log)
-
                         if self._mqtt_enabled:                            
-                            payload = state + translate_hex(str(binascii.hexlify(byte4), 'utf-8'), self.users)
+                            payload = state + translate_hex(self._hass, str(binascii.hexlify(byte4), 'utf-8'), self.users)
                             write_log(self._hass, payload)
                             self._mqtt.publish(self._data_topic, payload , retain=True)
 
@@ -586,15 +583,18 @@ def write_log(hass, log: str):
         out.write('\n')
         out.write(log)
 
-def translate_hex(hex: str, users):
+def translate_hex(hass, hex: str, users):
     for user in users:
         if user['remote_id'] == hex:
             response = '"local":"false","user":"%s"}' % ( user['user_name'] )
             return response
         elif user['local_id'] == hex:
-            response = 'local":"true","user":"%s"}' % ( user['user_name'] )
+            response = '"local":"true","user":"%s"}' % ( user['user_name'] )
             return response
-    return 'local":"unknown","user":"unknown"}' 
+    
+    log = "Unknown ID armed/disarmed: %s" % (hex)
+    write_log(hass, log)
+    return '"local":"unknown","user":"unknown"}' 
 
 
 async def async_load_users(path: str, hass: HomeAssistantType, config: ConfigType, async_add_entities):
