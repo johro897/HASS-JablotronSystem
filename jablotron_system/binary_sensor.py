@@ -100,11 +100,6 @@ async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, asyn
     user_path = hass.config.path(YAML_USERS)
     devices = await async_load_config(yaml_path, hass, config, async_add_entities)
     users = await async_load_users(user_path, hass, config, async_add_entities)
-    _LOGGER.info('setup: %s', users)
-    for user in users:
-        _LOGGER.info('user: %s', user)
-        _LOGGER.info('remote: %s', user['remote_id'])
-        _LOGGER.info('local: %s', user['local_id'])
     data = DeviceScanner(hass, config, async_add_entities, devices, users)
 
 
@@ -453,13 +448,13 @@ class DeviceScanner():
                             state = '{"state":"disarm",'
                         elif byte3 == b'\x2e':
                             state = '{"state":"armed_away",'
-                            
-                        log = "User remote: %s" % translate_hex(str(binascii.hexlify(byte4), 'utf-8'), self.users)
+
+
                         write_log(self._hass, log)
 
                         if self._mqtt_enabled:                            
-                            #payload = '{"state":"%s","panel":"%s%s","user":"%s"}' % ( str(binascii.hexlify(byte3), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
                             payload = state + translate_hex(str(binascii.hexlify(byte4), 'utf-8'), self.users)
+                            write_log(self._hass, payload)
                             self._mqtt.publish(self._data_topic, payload , retain=True)
 
                     else:
