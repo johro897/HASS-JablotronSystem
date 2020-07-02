@@ -17,6 +17,7 @@ CONF_CODE_DISARM_REQUIRED = 'code_disarm_required'
 CONF_STATE_TOPIC = 'state_topic'
 CONF_COMMAND_TOPIC = 'command_topic'
 CONF_DATA_TOPIC = 'data_topic'
+CONF_MQTT_EXT_BROKER = 'mqtt_external'
 DEFAULT_STATE_TOPIC = 'home-assistant/mqtt_example/state'
 DEFAULT_COMMAND_TOPIC = 'home-assistant/mqtt_example/set'
 DEFAULT_DATA_TOPIC = 'home-assistant/mqtt_example/data'
@@ -27,6 +28,7 @@ CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_PORT, default=DEFAULT_PORT): cv.string,
         vol.Required(CONF_CODE): cv.string,
+        vol.Optional(CONF_MQTT_EXT_BROKER, default=False): cv.boolean,
         vol.Optional(CONF_CODE_ARM_REQUIRED, default=False): cv.boolean,
         vol.Optional(CONF_CODE_DISARM_REQUIRED, default=True): cv.boolean,
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,

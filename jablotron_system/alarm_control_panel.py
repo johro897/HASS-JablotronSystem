@@ -52,9 +52,13 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
         
         """Setup the MQTT component, if the mqtt.publish service is available."""
         """Since MQTT is run on separate instance I will connect directly"""
-      #  self._mqtt_enabled = hass.services.has_service('mqtt', 'publish')
-        self._mqtt_enabled = True
-        _LOGGER.info("(__init__) MQTT enabled? %s", self._mqtt_enabled)
+        if hass.data[DOMAIN]['mqtt_external']:
+            self._mqtt_enabled = True
+            _LOGGER.info("(__init__) MQTT external: %s", self._mqtt_enabled)
+        else:
+            self._mqtt_enabled = hass.services.has_service('mqtt', 'publish')
+            _LOGGER.info("(__init__) MQTT enabled? %s", self._mqtt_enabled)
+        
         
         if self._mqtt_enabled:
           self._mqtt = hass.components.mqtt
