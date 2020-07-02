@@ -29,6 +29,7 @@ Optional arguments are:
 ```
   code_arm_required: True
   code_disarm_required: True
+  mqtt_external: True
   state_topic: "backend/alarm_control_panel/jablotron/state"
   command_topic: "backend/alarm_control_panel/jablotron/set"
   data_topic: "backend/alarm_control_panel/jablotron/data"
@@ -69,6 +70,7 @@ $ dmesg | grep hid
 ## Enable MQTT support
 **Alarm_control_panel**
 
+If you are using an external MQTT Broker, for instance on a secondary Pie, you can set mqtt_external as True. This will remove some issue I noticed when the other pie was restarted.
 If the mqtt: component has been properly configured on the local host (directly connected to the Jablotron system), the alarm_control_panel will publish states and listen for changed alarm states automatically. You could specify which topics should be used.
 - The `state_topic` will be used for announcing new states (MQTT messages will be retained)
 - The `command_topic` will be used for receiving incoming states from a remote alarm_control_panel.
