@@ -407,15 +407,16 @@ class DeviceScanner():
                     byte5 = packetpart[4:5]  # 5th byte, first part of device ID
                     byte6 = packetpart[5:6]  # 6th byte, second part of device ID                    
                     _LOGGER.debug('Sensor ID: %s%s : State: %s', str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8') )
-                    log = "device: %s%s : state: %s" % (str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
-                    write_log(self._hass, log)
+                    """Enable when finding Sensors"""
+                    # log = "device: %s%s : state: %s" % (str(binascii.hexlify(byte5), 'utf-8'), str(binascii.hexlify(byte6), 'utf-8'), str(binascii.hexlify(byte4), 'utf-8'))
+                    # write_log(self._hass, log)
                     
 
 #                    _LOGGER.info('State: %s', str(binascii.hexlify(byte4), 'utf-8') )
                     
                     """Only process specific state changes"""
                     if byte3 in (b'\x00', b'\x01', b'\x80'):
-						# Added 80 för upstairs
+						# Added 80 for upstairs
                         if byte4 in (b'\x6c', b'\x70', b'\x74', b'\x78', b'\x7c', b'\x80', b'\x84', b'\x88', b'\x8c'):
 						# 6c Groventre Dörr     (6e) 4000
                         # 70 Förrådet           (72) 8000
@@ -433,9 +434,7 @@ class DeviceScanner():
 
                         """Decode sensor ID from 5th and 6th byte"""
                         dec = int.from_bytes(byte5+byte6, byteorder=sys.byteorder) # turn to 'little' if sys.byteorder is wrong
-                        #_LOGGER.info('dec value: %s', str(dec))
                         i = int(dec/64)
-                        #_LOGGER.info('Decode sensor: %s', str(i))
                         dev_id = 'jablotron_' + str(i)
                         entity_id = 'binary_sensor.' + dev_id
                         """ Create or update sensor """
@@ -443,8 +442,7 @@ class DeviceScanner():
                             self.async_see(dev_id, _device_state)
                         )
 
-                    # Added based on panel and app states, needs to be evalutaed and thought of
-                    # om man skickar disarm/armed_away/armed_home
+                    """If armed_home, armed_away or disarmed sent. this and who did the action will be sent to MQTT broker"""
                     elif byte3 in (b'\xae', b'\x0c', b'\x2e'):
                         if byte3 == b'\xae':
                             state = '{"state":"armed_home",'
@@ -576,6 +574,7 @@ def update_config(path: str, dev_id: str, device: JablotronSensor):
     _LOGGER.debug('update_config(): updated %s with sensor %s', path, dev_id)
 
 def write_log(hass, log: str):
+    """Internal log function in order to save over a longer time then ordinary debug log"""
     # Converting datetime object to string
     secondsSinceEpoch = time.time()
     timeObj = time.localtime(secondsSinceEpoch)
@@ -588,6 +587,7 @@ def write_log(hass, log: str):
         out.write(log)
 
 def translate_hex(hass, hex: str, users):
+    """Translate the hex user code into a User from the saved YAML"""
     for user in users:
         if user['remote_id'] == hex:
             response = '"local":"false","user":"%s"}' % ( user['user_name'] )
@@ -602,8 +602,7 @@ def translate_hex(hass, hex: str, users):
 
 
 async def async_load_users(path: str, hass: HomeAssistantType, config: ConfigType, async_add_entities):
-    """Load devices from YAML configuration file.
-    This method is a coroutine.
+    """Load users from YAML configuration file.
     """
     user_schema = vol.Schema({
         vol.Required('user_name'): cv.string,
