@@ -129,10 +129,11 @@ class JablotronSensor(BinarySensorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        if self.dev_name != '':
+        if self.dev_name != 'unknown':
             return self.dev_name
         else:
             return self.dev_id
+        
 
     @property
     def state(self):
@@ -306,7 +307,7 @@ class DeviceScanner():
             return
 
         """State received of unknown device, default device class is motion"""
-        dev_id = util.ensure_unique_string(dev_id, self.devices.keys())        
+        dev_id = util.ensure_unique_string(dev_id, self.devices.keys())
         device = JablotronSensor(self._hass, dev_id, 'unknown', 'motion')
         self.devices[dev_id] = device
 
@@ -442,7 +443,7 @@ class DeviceScanner():
                             self.async_see(dev_id, _device_state)
                         )
 
-                    """If armed_home, armed_away or disarmed sent. this and who did the action will be sent to MQTT broker"""
+                        """If armed_home, armed_away or disarmed sent. this and who did the action will be sent to MQTT broker"""
                     elif byte3 in (b'\xae', b'\x0c', b'\x2e'):
                         if byte3 == b'\xae':
                             state = '{"state":"armed_home",'
