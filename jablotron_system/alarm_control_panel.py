@@ -277,8 +277,8 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                         break
 
                 elif packet[:2] == b'\x51\x22' or packet[14:16] == b'\x51\x22': # Jablotron JA-100
-                    #_LOGGER.info("JA-100")
-                    #_LOGGER.info("Packet: %s", str(binascii.hexlify(packet), 'utf-8'))
+                    _LOGGER.info("JA-100")
+                    _LOGGER.info("Packet: %s", str(binascii.hexlify(packet), 'utf-8'))
                     self._model = 'Jablotron JA-100 Series'
                     
                     if packet[:2] == b'\x51\x22':
@@ -293,10 +293,10 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                         self._startup_message() # let's try sending another startup message here!
                         break
 
- #               else:
-#                    _LOGGER.info("Unknown packet: %s", packet)
-#                    _LOGGER.error("Unrecognised data stream, device type likely not a JA-82 or JA101 control panel. Please raise an issue at https://github.com/mattsaxon/HASS-Jablotron80/issues with this packet info [%s]", packet)
-#                    self._stop.set() 
+                else:
+                    _LOGGER.info("Unknown packet: %s", packet)
+                    _LOGGER.error("Unrecognised data stream, device type likely not a JA-82 or JA101 control panel. Please raise an issue at https://github.com/mattsaxon/HASS-Jablotron80/issues with this packet info [%s]", packet)
+                    self._stop.set() 
 
         except (IndexError, FileNotFoundError, IsADirectoryError,
                 UnboundLocalError, OSError):
