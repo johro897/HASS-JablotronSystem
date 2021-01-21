@@ -52,13 +52,9 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
         
         """Setup the MQTT component, if the mqtt.publish service is available."""
         """Since MQTT is run on separate instance I will connect directly"""
-        if hass.data[DOMAIN]['mqtt_external']:
-            self._mqtt_enabled = True
-            _LOGGER.info("(__init__) MQTT external: %s", self._mqtt_enabled)
-        else:
-            self._mqtt_enabled = hass.services.has_service('mqtt', 'publish')
-            _LOGGER.info("(__init__) MQTT enabled? %s", self._mqtt_enabled)
-        
+      #  self._mqtt_enabled = hass.services.has_service('mqtt', 'publish')
+        self._mqtt_enabled = True
+        _LOGGER.info("(__init__) MQTT enabled? %s", self._mqtt_enabled)
         
         if self._mqtt_enabled:
           self._mqtt = hass.components.mqtt
@@ -190,6 +186,10 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                     self._state = new_state
 
                     if self._mqtt_enabled:
+                        # "arming" is not recognized as an MQTT alarm state, so we'll use "pending" instead.
+                        # https://www.home-assistant.io/components/alarm_control_panel.mqtt
+                        # if new_state == "arming":
+                            # new_state = "pending"
 
                         # Send MQTT message with new state
                         _LOGGER.info("Sending MQTT message with state '%s' to remote alarm_control_panel", new_state)
@@ -266,7 +266,7 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                 self._available = True
 
                 if packet[:2] == b'\x82\x01': # Jablotron JA-82
-                    #_LOGGER.info("JA-80")
+                    _LOGGER.info("JA-80")
                     self._model = 'Jablotron JA-80 Series'
                     state = ja82codes.get(packet[2:3])
 
@@ -277,8 +277,8 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                         break
 
                 elif packet[:2] == b'\x51\x22' or packet[14:16] == b'\x51\x22': # Jablotron JA-100
-                    #_LOGGER.info("JA-100")
-                    #_LOGGER.info("Packet: %s", str(binascii.hexlify(packet), 'utf-8'))
+                    _LOGGER.info("JA-100")
+                    _LOGGER.info("Packet: %s", str(binascii.hexlify(packet), 'utf-8'))
                     self._model = 'Jablotron JA-100 Series'
                     
                     if packet[:2] == b'\x51\x22':
@@ -290,13 +290,14 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                         _LOGGER.info("Unknown status packet is x51 x22 %s", packet[2:3])
 
                     elif state != "Heartbeat?" and state !="Key Press":
+                        _LOGGER.info("No heartbeat or key press)
                         self._startup_message() # let's try sending another startup message here!
                         break
 
- #               else:
-#                    _LOGGER.info("Unknown packet: %s", packet)
-#                    _LOGGER.error("Unrecognised data stream, device type likely not a JA-82 or JA101 control panel. Please raise an issue at https://github.com/mattsaxon/HASS-Jablotron80/issues with this packet info [%s]", packet)
-#                    self._stop.set() 
+                else:
+                    _LOGGER.info("Unknown packet: %s", packet)
+                    _LOGGER.error("Unrecognised data stream, device type likely not a JA-82 or JA101 control panel. Please raise an issue at https://github.com/mattsaxon/HASS-Jablotron80/issues with this packet info [%s]", packet)
+                    self._stop.set() 
 
         except (IndexError, FileNotFoundError, IsADirectoryError,
                 UnboundLocalError, OSError):
