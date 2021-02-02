@@ -170,10 +170,10 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
         try:
 
             while not self._stop.is_set():
-
-#                _LOGGER.debug("_read_loop: Acquiring lock...")
-#                self._lock.acquire()
-#                _LOGGER.debug("_read_loop: Lock aquired.")
+                _LOGGER.debug("self model: %s", self._model)
+                #_LOGGER.debug("_read_loop: Acquiring lock...")
+                #self._lock.acquire()
+                #_LOGGER.debug("_read_loop: Lock aquired.")
 
                 self._f = open(self._file_path, 'rb', 64)
 
@@ -196,15 +196,15 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                         self._mqtt.publish(self._state_topic, new_state, retain=True)
 
                     asyncio.run_coroutine_threadsafe(self._update(), self._hass.loop)
-#                else:
-#                    _LOGGER.info("ReadLoop: no state change")
+                else:
+                    _LOGGER.info("ReadLoop: no state change")
 
                 self._f.close()
                 _LOGGER.debug("_read_loop: closed connection")
 
-#                _LOGGER.debug("_read_loop: Releasing lock...")
-#                self._lock.release()
-#                _LOGGER.debug("_read_loop: Lock released.")
+                #_LOGGER.debug("_read_loop: Releasing lock...")
+                #self._lock.release()
+                #_LOGGER.debug("_read_loop: Lock released.")
 
                 time.sleep(1)
 
@@ -274,6 +274,7 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                         _LOGGER.info("Unknown status packet is x82 x01 %s", packet[2:3])
 
                     elif state != "Heartbeat?" and state !="Key Press":
+                        _LOGGER.info("No heartbeat or key press")
                         break
 
                 elif packet[:2] == b'\x51\x22' or packet[14:16] == b'\x51\x22': # Jablotron JA-100
@@ -282,22 +283,25 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                     self._model = 'Jablotron JA-100 Series'
                     
                     if packet[:2] == b'\x51\x22':
+                        _LOGGER.info("Get Packet %s", packet[2:3])
                         state = ja100codes.get(packet[2:3])
                     elif packet[14:16] == b'\x51\x22':
+                        _LOGGER.info("Get Packet %s", packet[16:17])
                         state = ja100codes.get(packet[16:17])
 
                     if state is None:
                         _LOGGER.info("Unknown status packet is x51 x22 %s", packet[2:3])
 
                     elif state != "Heartbeat?" and state !="Key Press":
-                        _LOGGER.info("No heartbeat or key press)
+                        _LOGGER.info("No heartbeat or key press")
                         self._startup_message() # let's try sending another startup message here!
                         break
 
                 else:
+                    _LOGGER.info("Unknown model")
                     _LOGGER.info("Unknown packet: %s", packet)
-                    _LOGGER.error("Unrecognised data stream, device type likely not a JA-82 or JA101 control panel. Please raise an issue at https://github.com/mattsaxon/HASS-Jablotron80/issues with this packet info [%s]", packet)
-                    self._stop.set() 
+                    _LOGGER.debug("Unrecognised data stream, device type likely not a JA-82 or JA101 control panel. Please raise an issue at https://github.com/mattsaxon/HASS-Jablotron80/issues with this packet info [%s]", packet)
+                    #self._stop.set() 
 
         except (IndexError, FileNotFoundError, IsADirectoryError,
                 UnboundLocalError, OSError):
@@ -412,7 +416,7 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
 
         try:
             _LOGGER.debug("_sendKeys: Acquiring lock...")
-#            self._lock.acquire()
+            #self._lock.acquire()
             _LOGGER.debug("_sendKeys: Lock acquired.")
 
             if self._model == 'Jablotron JA-80 Series':
@@ -430,7 +434,7 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
                 for c in code:
                     packet_code = packet_code + switcher.get(c)
 
-#                packet = b'\x80\x08\x03\x39\x39\x39' + packet_code
+                #packet = b'\x80\x08\x03\x39\x39\x39' + packet_code
                 packet = b'\x80\x08\x03\x30' + packet_code
                 _LOGGER.info("Submitting alarmcode...")
                 self._sendPacket(packet)
@@ -462,7 +466,7 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
 
         finally:
             _LOGGER.debug("_sendKeys: Releasing lock...")
-#            self._lock.release()
+            #self._lock.release()
             _LOGGER.debug("_sendKeys: Lock released.")
 
 
@@ -493,9 +497,9 @@ class JablotronAlarm(alarm.AlarmControlPanelEntity):
         elif self._model == 'Jablotron JA-100 Series':
             # Don't send any startup message. The packets in binary_sensor.py seem to be good enough to get a quick response with the right state of the alarm.
             pass
-#            _LOGGER.debug('Sending startup message')
-#            self._sendPacket(b'\x80\x01\x01\x52\x01\x0E')
-#            _LOGGER.debug('Successfully sent startup message')
+            #_LOGGER.debug('Sending startup message')
+            #self._sendPacket(b'\x80\x01\x01\x52\x01\x0E')
+            #_LOGGER.debug('Successfully sent startup message')
 
         else:
             _LOGGER.debug('Sending startup message')
