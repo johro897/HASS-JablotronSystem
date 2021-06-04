@@ -1,0 +1,9 @@
+{
+  "domain": "jablotron_system",
+  "name": "Jablotron Alarm",
+  "version": "1.0.0",
+  "documentation": "https://github.com/johro897/HASS-JablotronSystem",
+  "dependencies": [],
+  "codeowners": ["@johro897"],
+  "requirements": []
+}

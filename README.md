@@ -3,11 +3,16 @@ Jablotron component for Home Assistant adapted from:
 - Binary Sensor, https://github.com/plaksnor/HASS-JablotronSystem, maintained by @plaksnor
 - Alarm Control Panel, https://github.com/Horsi70/HASS-JablotronSystem, maintained by @Horsi70
 
+Adaptations made for my personal Jablotron setup and improvements I felt was needed. Also some removal of un used code.
+
 Home Assistant component to arm and disarm the alarm system and read sensor states.
 
 Currently supports:
 - alarm control panel, to arm and disarm the Jablotron alarm system
 - binary sensor, to separately monitor Jablotron sensors and interactions with panels and app
+- MQTT for sensor activities, arming/disarming activites(who armed)
+- Extended configurations, add name and sensor type in YAML file
+- Specific log file for test purpose, saves data without risk of accidently deleting when restarting HA
 
 ## Installation
 To use this component, copy all scripts to "<home assistant config dir>/custom_components/jablotron_system".
@@ -39,9 +44,9 @@ $ dmesg | grep hid
 - The alarm control panel is always available.
 - Sensors needs to be scanned for and added into the binary sensor in case they are not found from start
 - Discovered (triggered) sensors will be stored in config/jablotron_devices.yaml and get loaded after restart of HA.
-- In the 'Settings' -> 'Customization' section of HA you'll be able to customize each sensor:
+- In the jablotron_devices.yaml located in jablotron folder you can customize each sensor:
   - friendly_name : give it a human readable name
-  - device_class  : give it a class which matches the device
+  - device_class  : give it a class which matches the device (default is motion)
 
 ## Find necessary sensor data
 - All sensors will send 2 packets of data when triggered
@@ -122,39 +127,10 @@ binary_sensor:
 - Jablotron JA-106K-LAN, firmware: LJ60422, hardware: LJ16123
 - Jablotron magnetic and PIR (motion) sensors
 
-## Demo
-
-First you start triggering several sensors. They'll add up as soon as they are triggered:
-![Jablotron sensors detected](https://i.imgur.com/H8oSrii.gif)
-
-Each sensor gets it own entity_id with a unique number. This number represents the ID or position in J/F/O-link, the Jablotron software to configure your alarm system. If you're not able to open up J/F/O-link but you are able to access your alarm system over the internet, you could use the Jablotron app on your phone and go to Devices to get a list of devices. The order there is the same as the numbers of the entity_id's here.
-
-Discovered sensors are automatically stored in your config/jablotron_devices.yaml file. You could trigger all sensors, but you could also manually change this file and restart HA in order to see them all.
-
-After all sensors have been added, you could give them more friendly names in the Customization section:
-![Customize Jablotron sensor in Home Assistant](https://i.imgur.com/DhDgQoB.gif)
-
-At the end, you should be able to see all kind of sensors like here:
-![Jablotron sensors customized in Home Assistant](https://i.imgur.com/07gn2QP.gif)
-
-Here you'll see a Jablotron PIR sensor working as a binary_sensor, detecting motion:
-![Jablotron PIR sensor as binary_sensor in Home Assistant](https://i.imgur.com/4S5ctF9.gif)
-
-# MQTT demo
-
-Opened up 2 browsers. Left = local host, right = remote host based on MQTT:
-![Jablotron alarm control panel with MQTT support](https://i.imgur.com/3bRz6uj.gif)
-
-As you may have noticed, the MQTT alarm control panel doesn't support an 'arming' state, so I used a 'pending' state.
-
-MQTT support for binary sensors was already supported in HA by using automations.
-Opened up 2 browsers. Up = local host, down = remote host based on MQTT:
-![Jablotron binary sensors with MQTT supoprt](https://i.imgur.com/OsWlwvV.gif)
-
 ## Todo list:
-- Get device info, such as battery state and last seen.
-- Support for other devices such as smoke detectors, sirenes and (physical) control panel
-- Support other platforms to show arm/disarm history and photo gallery, probably only available on JABLOTRON Web Self-service (jablonet.net)
+- Support for other devices such as (physical) control panel
+- Add MQTT support for binary sensors directly in code not to rely on automation
+- Improve the "who armed/disarmed" function
 
 
 
